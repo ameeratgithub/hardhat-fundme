@@ -74,6 +74,46 @@ contract FundMe {
         priceFeed = AggregatorV3Interface(_priceFeedAddress);
     }
 
+    /** @notice This function returns the owner of the contract
+     *  @dev iOwner is prefixed with 'i' to show that it is immutable
+     *  @dev Immutable variables can save some gas
+     *  @return address
+     */
+    function getOwner() external view returns (address) {
+        return iOwner;
+    }
+
+    /** @notice This function returns the funder by index
+     *  @dev sFunders is prefixed with s to demonstrate that it is storage variable
+     *  @dev Storage variables should be handled carefully because they will cost a lot of gas
+     *  @param funderIndex This should be a uint256
+     *  @return address of the funder
+     */
+    function getFunder(uint256 funderIndex) external view returns (address) {
+        return sFunders[funderIndex];
+    }
+
+    /** @notice This function returns the amount funded by any address
+     *  @dev sAddressToAmountFunded is prefixed with s to demonstrate that it is storage variable
+     *  @dev Storage variables should be handled carefully because they will cost a lot of gas
+     *  @param funder This should be a uint256
+     *  @return amountFunded by the funder
+     */
+    function getAddressToAmountFunded(address funder)
+        external
+        view
+        returns (uint256 amountFunded)
+    {
+        return sAddressToAmountFunded[funder];
+    }
+
+    /** @notice This function returns the priceFeed instance
+     *  @return priceFeed instance of AggregatorV3
+     */
+    function getPriceFeed() external view returns (AggregatorV3Interface) {
+        return priceFeed;
+    }
+
     /** @notice This function collect funds and save into FundMe contract
      *  @dev This function gets conversion rate (Eth -> USD) from PriceConverter library
      */
@@ -87,7 +127,11 @@ contract FundMe {
     }
 
     function withdraw() public onlyOwner {
-        for (uint256 funderIndex; funderIndex < sFunders.length; funderIndex++) {
+        for (
+            uint256 funderIndex;
+            funderIndex < sFunders.length;
+            funderIndex++
+        ) {
             address funder = sFunders[funderIndex];
             sAddressToAmountFunded[funder] = 0;
         }
@@ -126,25 +170,5 @@ contract FundMe {
         sFunders = new address[](0);
 
         require(payable(msg.sender).send(address(this).balance), "Send Failed");
-    }
-
-    function getOwner() external view returns (address) {
-        return iOwner;
-    }
-
-    function getFunder(uint256 funderIndex) external view returns (address) {
-        return sFunders[funderIndex];
-    }
-
-    function getAddressToAmountFunded(address funder)
-        external
-        view
-        returns (uint256)
-    {
-        return sAddressToAmountFunded[funder];
-    }
-
-    function getPriceFeed() external view returns (AggregatorV3Interface) {
-        return priceFeed;
     }
 }
