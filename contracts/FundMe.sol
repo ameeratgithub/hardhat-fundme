@@ -37,6 +37,7 @@ pragma solidity ^0.8.0;
 import "./PriceConverter.sol";
 
 error FundMe__NotOwner();
+error FundMe__WithdrawSendError();
 
 /** @title A contract for crowd funding
  *  @author Ameer Hamza
@@ -50,16 +51,16 @@ contract FundMe {
     // 21,415 gas - constant
     // 23,515 gas - non-constant
 
-    address[] public funders;
+    address[] private sFunders;
 
-    mapping(address => uint256) public addressToAmountFunded;
+    mapping(address => uint256) public sAddressToAmountFunded;
 
-    address public immutable iOwner;
+    address private immutable iOwner;
 
     // 21,508 gas - immutable
     // 23,644 gas - non-immutable
 
-    AggregatorV3Interface public immutable priceFeed;
+    AggregatorV3Interface private immutable priceFeed;
 
     modifier onlyOwner() {
         if (msg.sender != iOwner) {
@@ -81,18 +82,18 @@ contract FundMe {
             msg.value.getConversionRate(priceFeed) >= MINIMUM_USD,
             "Didn't send enough"
         );
-        funders.push(msg.sender);
-        addressToAmountFunded[msg.sender] = msg.value;
+        sFunders.push(msg.sender);
+        sAddressToAmountFunded[msg.sender] = msg.value;
     }
 
     function withdraw() public onlyOwner {
-        for (uint256 funderIndex; funderIndex < funders.length; funderIndex++) {
-            address funder = funders[funderIndex];
-            addressToAmountFunded[funder] = 0;
+        for (uint256 funderIndex; funderIndex < sFunders.length; funderIndex++) {
+            address funder = sFunders[funderIndex];
+            sAddressToAmountFunded[funder] = 0;
         }
 
         // Reset the array
-        funders = new address[](0);
+        sFunders = new address[](0);
 
         // Actually withdraw the funds
 
@@ -108,5 +109,42 @@ contract FundMe {
         // // Send - 2300 gas, returns false if fails
         // bool sendSuccess = payable(msg.sender).send(address(this).balance);
         // require(sendSuccess,"Send Failed");
+    }
+
+    function cheaperWithdraw() public payable onlyOwner {
+        address[] memory fundersArray = sFunders;
+        // Mappings can't be in memory
+        for (
+            uint256 funderIndex = 0;
+            funderIndex < fundersArray.length;
+            funderIndex++
+        ) {
+            address funder = fundersArray[funderIndex];
+            sAddressToAmountFunded[funder] = 0;
+        }
+
+        sFunders = new address[](0);
+
+        require(payable(msg.sender).send(address(this).balance), "Send Failed");
+    }
+
+    function getOwner() external view returns (address) {
+        return iOwner;
+    }
+
+    function getFunder(uint256 funderIndex) external view returns (address) {
+        return sFunders[funderIndex];
+    }
+
+    function getAddressToAmountFunded(address funder)
+        external
+        view
+        returns (uint256)
+    {
+        return sAddressToAmountFunded[funder];
+    }
+
+    function getPriceFeed() external view returns (AggregatorV3Interface) {
+        return priceFeed;
     }
 }
